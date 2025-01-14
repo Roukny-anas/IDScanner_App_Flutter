@@ -17,7 +17,7 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _login() async {
     if (emailController.text.isEmpty || passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please fill in all fields')),
+        const SnackBar(content: Text('Please fill in all fields')),
       );
       return;
     }
@@ -55,12 +55,33 @@ class _LoginPageState extends State<LoginPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Enter OTP'),
+          backgroundColor: const Color(0xFFF5F5DC), // Set background color
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0), // Rounded corners
+          ),
+          title: const Text(
+            'Enter OTP',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF2E8B57), // Title color
+            ),
+          ),
           content: TextField(
             controller: otpController,
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
               labelText: 'OTP Code',
+              labelStyle: const TextStyle(color: Color(0xFF3CB371)), // Label color
+              prefixIcon: const Icon(Icons.lock, color: Color(0xFF2E8B57)), // Prefix icon
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.0), // Rounded border
+                borderSide: const BorderSide(color: Color(0xFF2E8B57)), // Border color
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderSide: const BorderSide(color: Color(0xFF2E8B57)), // Focused border color
+                borderRadius: BorderRadius.circular(12.0),
+              ),
             ),
           ),
           actions: [
@@ -69,7 +90,7 @@ class _LoginPageState extends State<LoginPage> {
                 final otpCode = int.tryParse(otpController.text);
                 if (otpCode == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Please enter a valid OTP code')),
+                    const SnackBar(content: Text('Please enter a valid OTP code')),
                   );
                   return;
                 }
@@ -85,7 +106,7 @@ class _LoginPageState extends State<LoginPage> {
                   final response = await authService.verifyTwoFactorAuth(authRequest);
 
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('OTP verification successful!')),
+                    const SnackBar(content: Text('OTP verification successful!')),
                   );
 
                   Navigator.pop(context); // Close the OTP dialog
@@ -96,7 +117,20 @@ class _LoginPageState extends State<LoginPage> {
                   );
                 }
               },
-              child: Text('Verify'),
+              style: TextButton.styleFrom(
+                backgroundColor: const Color(0xFF2E8B57), // Button background color
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12), // Rounded button
+                ),
+              ),
+              child: const Text(
+                'Verify',
+                style: TextStyle(
+                  color: Colors.white, // Button text color
+                  fontSize: 16,
+                ),
+              ),
             ),
           ],
         );
