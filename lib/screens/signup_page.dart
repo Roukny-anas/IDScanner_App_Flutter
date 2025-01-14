@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../models/user.dart';
+import '../sevices/AuthService.dart';
 
 class SignupPage extends StatefulWidget {
   @override
@@ -75,6 +79,30 @@ class _SignupPageState extends State<SignupPage> {
       return 'Passwords do not match';
     }
     return null;
+  }
+
+  Future<void> _signUp() async {
+    if (_formKey.currentState!.validate()) {
+      final user = User(
+        email: emailController.text,
+        password: passwordController.text,
+      );
+
+      try {
+        final authService = AuthService();
+        final response = await authService.signUp(user);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Registration successful!')),
+        );
+
+        Navigator.pushReplacementNamed(context, '/login');
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to sign up: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -161,15 +189,7 @@ class _SignupPageState extends State<SignupPage> {
                 ),
                 SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: () {
-                    if (_formKey.currentState!.validate()) {
-                      // Simulate a successful signup
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Registration successful!')),
-                      );
-                      Navigator.pushReplacementNamed(context, '/login');
-                    }
-                  },
+                  onPressed: _signUp,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xFF2E8B57),
                     padding: EdgeInsets.symmetric(vertical: 16),

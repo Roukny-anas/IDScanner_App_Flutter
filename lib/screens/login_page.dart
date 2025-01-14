@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../sevices/AuthService.dart';
+import '../models/auth_request.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -12,20 +14,94 @@ class _LoginPageState extends State<LoginPage> {
   bool isPasswordVisible = false;
   bool isLoading = false;
 
-  void login() {
+  Future<void> _login() async {
+    if (emailController.text.isEmpty || passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please fill in all fields')),
+      );
+      return;
+    }
+
     setState(() {
       isLoading = true;
     });
 
-    // Simulate a login process
-    Future.delayed(Duration(seconds: 2), () {
+    final authRequest = AuthRequest(
+      email: emailController.text,
+      password: passwordController.text,
+    );
+
+    try {
+      final authService = AuthService();
+      final response = await authService.signIn(authRequest);
+
+      // If login is successful, ask for OTP
+      _showOtpDialog(authRequest.email);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to login: $e')),
+      );
+    } finally {
       setState(() {
         isLoading = false;
       });
+    }
+  }
 
-      // Navigate to the IDScannerPage regardless of input
-      Navigator.pushReplacementNamed(context, '/idscanner');
-    });
+  void _showOtpDialog(String email) {
+    final otpController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Enter OTP'),
+          content: TextField(
+            controller: otpController,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: 'OTP Code',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                final otpCode = int.tryParse(otpController.text);
+                if (otpCode == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Please enter a valid OTP code')),
+                  );
+                  return;
+                }
+
+                final authRequest = AuthRequest(
+                  email: email,
+                  password: passwordController.text,
+                  otpCode: otpCode,
+                );
+
+                try {
+                  final authService = AuthService();
+                  final response = await authService.verifyTwoFactorAuth(authRequest);
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('OTP verification successful!')),
+                  );
+
+                  Navigator.pop(context); // Close the OTP dialog
+                  Navigator.pushReplacementNamed(context, '/idscanner');
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to verify OTP: $e')),
+                  );
+                }
+              },
+              child: Text('Verify'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -38,14 +114,12 @@ class _LoginPageState extends State<LoginPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Add the image here
               Image.asset(
                 'assets/IDScanner.png',
-                height: 150, // Adjust the height as needed
+                height: 150,
                 fit: BoxFit.contain,
               ),
               const SizedBox(height: 24),
-
               const Text(
                 'Welcome Back!',
                 style: TextStyle(
@@ -65,7 +139,6 @@ class _LoginPageState extends State<LoginPage> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 40),
-
               Container(
                 padding: const EdgeInsets.all(16.0),
                 decoration: BoxDecoration(
@@ -98,7 +171,6 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     TextField(
                       controller: passwordController,
                       obscureText: !isPasswordVisible,
@@ -130,9 +202,8 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
               const SizedBox(height: 24),
-
               ElevatedButton(
-                onPressed: isLoading ? null : login,
+                onPressed: isLoading ? null : _login,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2E8B57),
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -145,7 +216,6 @@ class _LoginPageState extends State<LoginPage> {
                     : const Text('Login', style: TextStyle(fontSize: 18, color: Colors.white)),
               ),
               const SizedBox(height: 16),
-
               Row(
                 children: [
                   Expanded(
@@ -170,7 +240,6 @@ class _LoginPageState extends State<LoginPage> {
                 ],
               ),
               const SizedBox(height: 16),
-
               Center(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
