@@ -1,6 +1,7 @@
-import 'dart:io'; // Import the dart:io library for File class
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
+import '../sevices/DocumentService.dart'; // Import the DocumentService
 
 class IDScannerPage extends StatefulWidget {
   @override
@@ -12,7 +13,9 @@ class _IDScannerPageState extends State<IDScannerPage> {
   List<CameraDescription>? cameras;
   bool isCameraInitialized = false;
   bool isLoading = false;
-  String? _capturedImagePath; // Store the path of the captured image
+  bool isFlashOn = false; // Flash toggle state
+  String? _capturedImagePath;
+  String? _extractedText; // Store the extracted text
 
   @override
   void initState() {
@@ -25,6 +28,7 @@ class _IDScannerPageState extends State<IDScannerPage> {
     _cameraController = CameraController(
       cameras!.first,
       ResolutionPreset.medium,
+      enableAudio: false,
     );
 
     await _cameraController!.initialize();
@@ -35,6 +39,20 @@ class _IDScannerPageState extends State<IDScannerPage> {
     });
   }
 
+  Future<void> _toggleFlash() async {
+    if (!isCameraInitialized) return;
+
+    try {
+      isFlashOn = !isFlashOn;
+      await _cameraController!.setFlashMode(
+        isFlashOn ? FlashMode.torch : FlashMode.off,
+      );
+      setState(() {});
+    } catch (e) {
+      print('Error toggling flash: $e');
+    }
+  }
+
   Future<void> _takePicture() async {
     if (!isCameraInitialized) return;
 
@@ -43,9 +61,19 @@ class _IDScannerPageState extends State<IDScannerPage> {
     });
 
     try {
+      // Take a picture
       final XFile picture = await _cameraController!.takePicture();
       setState(() {
-        _capturedImagePath = picture.path; // Store the captured image path
+        _capturedImagePath = picture.path;
+      });
+
+      // Upload the image and get the extracted text
+      final documentService = DocumentService(baseUrl: 'http://192.168.1.38:8082');
+      final document = await documentService.uploadDocument(_capturedImagePath!);
+      
+      // Update the state with the extracted text
+      setState(() {
+        _extractedText = document.extractedData;
       });
     } catch (e) {
       print('Error taking picture: $e');
@@ -54,6 +82,13 @@ class _IDScannerPageState extends State<IDScannerPage> {
         isLoading = false;
       });
     }
+  }
+
+  void _removeImage() {
+    setState(() {
+      _capturedImagePath = null;
+      _extractedText = null;
+    });
   }
 
   @override
@@ -95,7 +130,7 @@ class _IDScannerPageState extends State<IDScannerPage> {
               const SizedBox(height: 40),
 
               Container(
-                padding: const EdgeInsets.all(8.0), // Reduced padding to make the preview larger
+                padding: const EdgeInsets.all(8.0),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12.0),
@@ -108,19 +143,20 @@ class _IDScannerPageState extends State<IDScannerPage> {
                     ),
                   ],
                 ),
-                child: Column(
+                child: Stack(
+                  alignment: Alignment.center, // Center the "X" button over the image
                   children: [
                     if (_capturedImagePath != null)
                       SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.5, // Set a fixed height for the preview
+                        height: MediaQuery.of(context).size.height * 0.5,
                         child: Image.file(
-                          File(_capturedImagePath!), // Display the captured image
+                          File(_capturedImagePath!),
                           fit: BoxFit.cover,
                         ),
                       )
                     else if (isCameraInitialized)
                       SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.5, // Set a fixed height for the preview
+                        height: MediaQuery.of(context).size.height * 0.5,
                         child: AspectRatio(
                           aspectRatio: _cameraController!.value.aspectRatio,
                           child: CameraPreview(_cameraController!),
@@ -128,23 +164,66 @@ class _IDScannerPageState extends State<IDScannerPage> {
                       )
                     else
                       const Center(child: CircularProgressIndicator()),
+                    if (_capturedImagePath != null)
+                      Positioned(
+                        child: GestureDetector(
+                          onTap: _removeImage,
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.5),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 32,
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
               const SizedBox(height: 24),
 
-              ElevatedButton(
-                onPressed: isLoading ? null : _takePicture,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2E8B57),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              if (_extractedText != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  child: Text(
+                    'Extracted Text: $_extractedText',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.black,
+                    ),
                   ),
                 ),
-                child: isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Scan', style: TextStyle(fontSize: 18, color: Colors.white)),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  ElevatedButton(
+                    onPressed: isLoading ? null : _takePicture,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2E8B57),
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text('Scan', style: TextStyle(fontSize: 18, color: Colors.white)),
+                  ),
+                  IconButton(
+                    onPressed: isCameraInitialized ? _toggleFlash : null,
+                    icon: Icon(
+                      isFlashOn ? Icons.flash_on : Icons.flash_off,
+                      color: isFlashOn ? Colors.yellow : Colors.grey,
+                    ),
+                    iconSize: 32,
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
             ],

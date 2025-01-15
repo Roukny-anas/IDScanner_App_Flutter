@@ -4,7 +4,7 @@ import '../models/auth_request.dart';
 import '../models/user.dart';
 
 class AuthService {
-  final String baseUrl = "http://192.168.1.37:8081/api/auth";
+  final String baseUrl = "http://192.168.1.38:8081/api/auth";
 
   // Sign Up
   Future<String> signUp(User user) async {

@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import '../models/user.dart';
 
 class UserService {
-  final String baseUrl = "http://192.168.1.37:8081/api/users";
+  final String baseUrl = "http://192.168.1.38:8081/api/users";
 
   // Get all users
   Future<List<User>> getAllUsers() async {
